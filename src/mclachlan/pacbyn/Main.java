@@ -79,7 +79,7 @@ public class Main
 			colorPalette,
 			palletColours,
 			true,
-			Quantize.ReductionStrategy.AVERAGE_DISTANCE);
+			Quantize.ReductionStrategy.BETTER_CONTRAST);
 
 		Map<Integer, String> paletteKey = new HashMap<>();
 		for (int i = 0; i < palette.length; i++)
