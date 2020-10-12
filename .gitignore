@@ -25,3 +25,9 @@ hs_err_pid*
 #images
 *.jpg
 *.png
+
+# IDEA
+.DS_Store
+.idea
+*.iml
+/out/.*
