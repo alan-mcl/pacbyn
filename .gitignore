@@ -23,8 +23,7 @@
 hs_err_pid*
 
 #images
-*.jpg
-*.png
+output.png
 
 # IDEA
 .DS_Store
