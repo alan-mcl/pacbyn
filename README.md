@@ -11,6 +11,15 @@ from an input image.
 
 ## examples
 
-mclachlan.pacbyn.Main -i minion.png -o output_example.png
+Given this image:
+![](minion.png)
+
+```mclachlan.pacbyn.Main -i minion.png -o output_example.png -d```
+
+![](output_example_debug.png)
+
+```mclachlan.pacbyn.Main -i minion.png -o output_example.png```
+
+![](output_example.png)
 
 
