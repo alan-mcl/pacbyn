@@ -1,3 +1,12 @@
+
+/*
+
+Source: https://stackoverflow.com/questions/21472245/color-quantization-with-n-out-of-m-predefined-colors
+
+Author: https://stackoverflow.com/users/3270595/balder
+
+ */
+
 package mclachlan.pacbyn;
 
 import java.awt.Color;

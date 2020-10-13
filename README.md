@@ -2,6 +2,13 @@
 Creates a **pa**lletised, pixelised **c**olour-**by**-**n**umbers for kids, 
 from an input image.
 
+## boring stuff
+pacbyn is GPLv3 licensed.
+
+It uses the colour quantisation algorithm presented on 
+[Stack Overflow](https://stackoverflow.com/questions/21472245/color-quantization-with-n-out-of-m-predefined-colors) 
+by used [Balder](https://stackoverflow.com/users/3270595/balder).
+
 ## parameters
 * -i: input image (must be square)
 * -w: output pixel rows & columns (default 40)
