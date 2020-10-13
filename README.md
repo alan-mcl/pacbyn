@@ -17,6 +17,7 @@ from an input image.
 ## examples
 
 Given this image:
+
 ![](minion.png)
 
 ```mclachlan.pacbyn.Main -i minion.png -o output_example.png -d```
