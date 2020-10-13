@@ -12,16 +12,19 @@ import javax.imageio.ImageIO;
 
 public class Main
 {
-	static boolean debug = false;
+	enum ColouringKey
+	{
+		INT_SEQ, INT_RAND, ALPHA_SEQ, ALPHA_RAND
+	}
 
 	public static void main(String[] args) throws Exception
 	{
-		Random r = new Random(System.currentTimeMillis());
-
 		int palletColours = 20;
 		int pixelsInRow = 40;
 		String imageName = null;
 		String outputName = "output.png";
+		boolean debug = false;
+		ColouringKey colouringKeyMethod = ColouringKey.INT_RAND;
 
 		for (int i = 0; i < args.length; i++)
 		{
@@ -45,6 +48,10 @@ public class Main
 			{
 				pixelsInRow = Integer.parseInt(args[++i]);
 			}
+			else if (args[i].equalsIgnoreCase("-k"))
+			{
+				colouringKeyMethod = ColouringKey.valueOf(args[++i]);
+			}
 		}
 
 
@@ -52,7 +59,7 @@ public class Main
 		int imageHeight = image.getHeight();
 		int imageWidth = image.getWidth();
 
-		// todo
+		// validate square image
 		if (imageHeight != imageWidth)
 		{
 			throw new Exception("requires a square image");
@@ -81,27 +88,15 @@ public class Main
 			true,
 			Quantize.ReductionStrategy.BETTER_CONTRAST);
 
-		Map<Integer, String> paletteKey = new HashMap<>();
-		for (int i = 0; i < palette.length; i++)
-		{
-			int key;
-
-			do
-			{
-				key = r.nextInt(99);
-			}
-			while (paletteKey.containsKey(key));
-
-			paletteKey.put(palette[i], ""+key);
-		}
+		Map<Integer, String> paletteKey = generateColouringKey(palette, colouringKeyMethod);
 
 		// A4 size
 		int outputWidth = 2480;
 		int outputHeight = 3508;
 		BufferedImage displayImage = new BufferedImage(outputWidth, outputHeight, BufferedImage.TYPE_INT_RGB);
 
-		Graphics graphics = displayImage.getGraphics();
-		graphics.setFont(new Font("Arial Black", Font.PLAIN, 25));
+		Graphics g = displayImage.getGraphics();
+		g.setFont(new Font("Arial Black", Font.PLAIN, 25));
 
 		// where we draw the grid
 		int startx = 150;
@@ -121,87 +116,120 @@ public class Main
 			}
 		}
 
-		// test
-//		for (int i = 0; i < pixelsInRow; i++)
-//		{
-//			for (int j = 0; j < pixelsInRow; j++)
-//			{
-//				displayImage.setRGB(i, j, inputPixels[i * pixelsInRow + j]);
-//			}
-//		}
-
 		// draw the grid
 		for (int i = 0; i < pixelsInRow; i++)
 		{
 			for (int j = 0; j < pixelsInRow; j++)
 			{
-				for (int k = 0; k < cellWidth; k++)
-				{
-					int x = startx + (i * cellWidth) + k;
-					int y = starty + (j * cellHeight);
-					displayImage.setRGB(x, y, 0x000000);
-
-					x = startx + (i * cellWidth);
-					y = starty + (j * cellHeight) + k;
-					displayImage.setRGB(x, y, 0x000000);
-				}
-
-				int cellColour = inputPixels[j * pixelsInRow + i];
 				int x = startx + (i * cellWidth);
 				int y = starty + (j * cellHeight);
-				graphics.setColor(Color.GRAY);
-				graphics.drawString(paletteKey.get(cellColour), x + cellWidth/4, y + cellHeight/4*3);
+
+				g.setColor(Color.DARK_GRAY);
+				g.drawRect(x, y, cellWidth, cellHeight);
+
+				int cellColour = inputPixels[j * pixelsInRow + i];
+				g.setColor(Color.GRAY);
+				g.drawString(paletteKey.get(cellColour), x + cellWidth / 4, y + cellHeight / 4 * 3);
 
 				if (debug)
 				{
 					for (int k = 0; k < cellWidth; k++)
 					{
-						for (int m = 0; m < cellWidth; m++)
-						{
-							x = startx + (i * cellWidth) + k;
-							y = starty + (j * cellHeight) + m;
-							displayImage.setRGB(x, y, cellColour);
-						}
+						g.setColor(new Color(cellColour));
+						g.fillRect(x, y, cellWidth, cellHeight);
 					}
 				}
 			}
 		}
 
 		// draw the key
-
-		int keyStartX = 200;
+		int keyStartX = 100;
 		int keyStartY = 2500;
 
 		cellWidth = cellWidth * 2;
 		cellHeight = cellHeight * 2;
 
-		for (int i=0; i<palletColours; i++)
+		for (int i = 0; i < palletColours; i++)
 		{
 			int cellColour = palette[i];
 
-			for (int k = 2; k < cellWidth-2; k++)
-			{
-				for (int m = 2; m < cellWidth-2; m++)
-				{
-					int x = keyStartX + (i * cellWidth) + k;
-					int y = keyStartY + m;
-					displayImage.setRGB(x, y, cellColour);
-				}
-			}
-
 			int x = keyStartX + (i * cellWidth);
 			int y = keyStartY;
-			graphics.setColor(Color.BLACK);
-			graphics.drawString(paletteKey.get(palette[i]), x + cellWidth/4, y + cellHeight/4*3);
-		}
 
+			g.setColor(new Color(cellColour));
+			g.fillRect(x + 2, y + 2, cellWidth - 4, cellHeight - 4);
+
+			g.setColor(Color.BLACK);
+			g.drawString(paletteKey.get(palette[i]), x + cellWidth / 4, y + cellHeight / 4 * 3);
+		}
 
 		// ----
 
 		ImageIO.write(displayImage, "png", new File(outputName));
 	}
 
+	/*-------------------------------------------------------------------------*/
+	private static Map<Integer, String> generateColouringKey(
+		int[] palette,
+		ColouringKey method)
+	{
+		Random r = new Random(System.currentTimeMillis());
 
+		Map<Integer, String> paletteKey = new HashMap<>();
+
+		switch (method)
+		{
+			case INT_SEQ:
+				for (int i = 0; i < palette.length; i++)
+				{
+					paletteKey.put(palette[i], String.valueOf(i));
+				}
+				break;
+
+			case INT_RAND:
+				for (int i = 0; i < palette.length; i++)
+				{
+					String s;
+
+					do
+					{
+						s = String.valueOf(r.nextInt(99));
+					}
+					while (paletteKey.containsValue(s));
+
+					paletteKey.put(palette[i], s);
+				}
+				break;
+
+			case ALPHA_SEQ:
+				for (byte i=0; i<palette.length; i++)
+				{
+					paletteKey.put(palette[i], new String(new char[]{(char)(i+97)}));
+				}
+				break;
+
+			case ALPHA_RAND:
+				for (int i = 0; i < palette.length; i++)
+				{
+					String s;
+
+					do
+					{
+						s = new String(new char[]{(char)(r.nextInt(26)+97)});
+					}
+					while (paletteKey.containsValue(s));
+
+					paletteKey.put(palette[i], s);
+				}
+
+				break;
+		}
+
+		return paletteKey;
+	}
+
+
+	/*-------------------------------------------------------------------------*/
 	private static int[] grabPixels(Image image, int width,
 		int height) throws InterruptedException
 	{
@@ -213,29 +241,4 @@ public class Main
 
 		return result;
 	}
-
-	/*-------------------------------------------------------------------------*/
-	public static byte getAlpha(int pixel)
-	{
-		return (byte)((pixel >> 24) & 0xFF);
-	}
-
-	/*-------------------------------------------------------------------------*/
-	public static byte getRed(int pixel)
-	{
-		return (byte)((pixel >> 16) & 0xFF);
-	}
-
-	/*-------------------------------------------------------------------------*/
-	public static byte getGreen(int pixel)
-	{
-		return (byte)((pixel >> 8) & 0xFF);
-	}
-
-	/*-------------------------------------------------------------------------*/
-	public static byte getBlue(int pixel)
-	{
-		return (byte)(pixel & 0xFF);
-	}
-
 }
