@@ -452,7 +452,7 @@ private static int[] createResultingImage(int[] pixels,List<PaletteColor> palett
     return palette;
 }
 
-public static int[] quantize(int[] pixels, int widht, int heigth, int[] colorPalette, int max_cols, boolean dither, ReductionStrategy reductionStrategy) {
+public static int[] quantize(int[] pixels, int width, int heigth, int[] colorPalette, int max_cols, boolean dither, ReductionStrategy reductionStrategy) {
 
     // create the initial palette by finding the best match colors from the given color palette
     List<PaletteColor> paletteColors = createInitialPalette(pixels, colorPalette);
@@ -477,7 +477,7 @@ public static int[] quantize(int[] pixels, int widht, int heigth, int[] colorPal
     assert paletteColors.size() == max_cols;
 
     // create the resulting image
-    return createResultingImage(pixels,paletteColors, dither, widht, heigth);
+    return createResultingImage(pixels, paletteColors, dither, width, heigth);
 
 }   
 

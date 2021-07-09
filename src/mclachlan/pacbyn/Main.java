@@ -42,7 +42,7 @@ public class Main
 		String imageName = null;
 		String outputName = "output.png";
 		boolean debug = false;
-		ColouringKey colouringKeyMethod = ColouringKey.INT_RAND;
+		ColouringKey colouringKeyMethod = ColouringKey.INT_SEQ;
 
 		for (int i = 0; i < args.length; i++)
 		{
@@ -96,15 +96,12 @@ public class Main
 
 		int[] inputPixels = grabPixels(resizedImage, pixelsInRow, pixelsInRow);
 
-		int[] colorPalette = Quantize.createRandomColorPalette(256);
-		int[] palette = Quantize.quantize(
-			inputPixels,
-			pixelsInRow,
-			pixelsInRow,
-			colorPalette,
-			palletColours,
-			true,
-			Quantize.ReductionStrategy.BETTER_CONTRAST);
+		int[] palette = new int[palletColours];
+
+//		palette = palletizeFloydSteinberg(palletColours, pixelsInRow, inputPixels);
+//		palette = palletizeGimp(palletColours, pixelsInRow, inputPixels);
+//		palette = palletizeSimple(palletColours, inputPixels);
+		palette = palletizeKMeans(palletColours, inputPixels);
 
 		Map<Integer, String> paletteKey = generateColouringKey(palette, colouringKeyMethod);
 
@@ -187,6 +184,197 @@ public class Main
 	}
 
 	/*-------------------------------------------------------------------------*/
+	private static int[] palletizeGimp(
+		int palletColours,
+		int pixelsInRow,
+		int[] inputPixels)
+	{
+		// source: https://www.qtcentre.org/threads/36385-Posterizes-an-image-with-results-identical-to-Gimp-s-Posterize-command
+
+		int levels = palletColours / 2;
+		levels--;
+		double sr, sg, sb;
+		int dr, dg, db;
+		for (int i = 0; i < inputPixels.length; ++i)
+		{
+			int val = inputPixels[i];
+
+			// to make sr, sg, sb between 0 and 1
+			sr = ((val >> 16) & 0xFF) / 255.0;
+			sg = ((val >> 8) & 0xFF) / 255.0;
+			sb = ((val >> 0) & 0xFF) / 255.0;
+
+			//rounding and NOT TRUNCATING
+			dr = (int)(255 * Math.round(sr * levels) / levels);
+			dg = (int)(255 * Math.round(sg * levels) / levels);
+			db = (int)(255 * Math.round(sb * levels) / levels);
+
+			inputPixels[i] = (inputPixels[i] & 0xFF000000) | dr<<16 | dg<<8 | db<<0;
+		}
+
+		Set<Integer> colours = new HashSet<>();
+
+		for (int i = 0; i < inputPixels.length; i++)
+		{
+			colours.add(inputPixels[i]);
+		}
+
+		if (colours.size() > palletColours)
+		{
+			throw new RuntimeException("Error - too many colours in pallet: "+colours.size());
+		}
+
+		int[] result = new int[palletColours];
+		List<Integer> list = new ArrayList<>(colours);
+		for (int i = 0; i < result.length; i++)
+		{
+			result[i] = list.get(i);
+		}
+
+		return result;
+	}
+
+	/*-------------------------------------------------------------------------*/
+		private static int[] palletizeKMeans(
+			int palletColours,
+			int[] inputPixels)
+		{
+			int[] pallet = KMeansPalette.palletize(palletColours, inputPixels);
+
+			assignImagePixelsFromPallet(palletColours, inputPixels, pallet);
+
+			return pallet;
+		}
+
+	/*-------------------------------------------------------------------------*/
+	private static int[] palletizeSimple(
+		int palletColours,
+		int[] inputPixels)
+	{
+		Map<Integer, Integer> colourMap = new HashMap<>();
+
+		// count all the colours
+		for (int i = 0; i < inputPixels.length; ++i)
+		{
+			if (!colourMap.containsKey(inputPixels[i]))
+			{
+				colourMap.put(inputPixels[i], 0);
+			}
+
+			colourMap.put(inputPixels[i], colourMap.get(inputPixels[i])+1);
+		}
+
+		// get the top N out
+		Set<Integer> pallet = new HashSet<>();
+
+		for (int i=0; i<palletColours; i++)
+		{
+			int col = -1;
+			int max = 0;
+			for (Integer colour : colourMap.keySet())
+			{
+				if (colourMap.get(colour) > max)
+				{
+					max = colourMap.get(colour);
+					col = colour;
+				}
+			}
+
+			pallet.add(col);
+			colourMap.remove(col);
+		}
+
+		int[] result = new int[palletColours];
+		List<Integer> list = new ArrayList<>(pallet);
+		for (int i = 0; i < result.length; i++)
+		{
+			result[i] = list.get(i);
+		}
+
+		assignImagePixelsFromPallet(palletColours, inputPixels, result);
+
+		return result;
+	}
+
+	/*-------------------------------------------------------------------------*/
+	private static void assignImagePixelsFromPallet(int palletColours,
+		int[] inputPixels, int[] palletArray)
+	{
+		Set<Integer> pallet = new HashSet<>();
+
+		for (int i = 0; i < palletArray.length; i++)
+		{
+			pallet.add(palletArray[i]);
+		}
+
+		// assign image pixels from the pallet
+		int r1, g1, b1, r2, g2, b2;
+		for (int i = 0; i < inputPixels.length; ++i)
+		{
+			int val = inputPixels[i];
+
+			if (pallet.contains(val))
+			{
+				continue;
+			}
+
+			r1 = ((val >> 16) & 0xFF);
+			g1 = ((val >> 8) & 0xFF);
+			b1 = ((val >> 0) & 0xFF);
+
+			int palletCol = 0;
+			double minDist = Double.MAX_VALUE;
+
+			for (Integer col : pallet)
+			{
+				r2 = ((col >> 16) & 0xFF);
+				g2 = ((col >> 8) & 0xFF);
+				b2 = ((col >> 0) & 0xFF);
+
+				double dist = Math.sqrt(Math.pow(r2 - r1, 2) + Math.pow(g2 - g1, 2) + Math.pow(b2 - b1, 2));
+
+				if (dist < minDist)
+				{
+					minDist = dist;
+					palletCol = col;
+				}
+			}
+
+			inputPixels[i] = palletCol;
+		}
+
+		Set<Integer> colours = new HashSet<>();
+
+		for (int i = 0; i < inputPixels.length; i++)
+		{
+			colours.add(inputPixels[i]);
+		}
+
+		if (colours.size() > palletColours)
+		{
+			throw new RuntimeException("Error - too many colours in pallet: "+colours.size());
+		}
+	}
+
+	/*-------------------------------------------------------------------------*/
+	private static int[] palletizeFloydSteinberg(int palletColours,
+		int pixelsInRow,
+		int[] inputPixels)
+	{
+		int[] palette;
+		int[] colorPalette = Quantize.createRandomColorPalette(256);
+		palette = Quantize.quantize(
+			inputPixels,
+			pixelsInRow,
+			pixelsInRow,
+			colorPalette,
+			palletColours,
+			true,
+			Quantize.ReductionStrategy.BETTER_CONTRAST);
+		return palette;
+	}
+
+	/*-------------------------------------------------------------------------*/
 	private static Map<Integer, String> generateColouringKey(
 		int[] palette,
 		ColouringKey method)
@@ -220,9 +408,9 @@ public class Main
 				break;
 
 			case ALPHA_SEQ:
-				for (byte i=0; i<palette.length; i++)
+				for (byte i = 0; i < palette.length; i++)
 				{
-					paletteKey.put(palette[i], new String(new char[]{(char)(i+97)}));
+					paletteKey.put(palette[i], new String(new char[]{(char)(i + 97)}));
 				}
 				break;
 
@@ -233,7 +421,7 @@ public class Main
 
 					do
 					{
-						s = new String(new char[]{(char)(r.nextInt(26)+97)});
+						s = new String(new char[]{(char)(r.nextInt(26) + 97)});
 					}
 					while (paletteKey.containsValue(s));
 
