@@ -70,8 +70,30 @@ public class Main
 			{
 				colouringKeyMethod = ColouringKey.valueOf(args[++i]);
 			}
+			else if (args[i].equalsIgnoreCase("-?"))
+			{
+				printUsage();
+				System.exit(1);
+			}
+			else
+			{
+				printUsage();
+				throw new RuntimeException("Invalid arg: "+args[i]);
+			}
 		}
 
+		if (imageName == null)
+		{
+			System.out.println("Argument -i [input image file] is is required");
+			printUsage();
+			System.exit(1);
+		}
+		if (outputName == null)
+		{
+			System.out.println("Argument -o [output image file] is is required");
+			printUsage();
+			System.exit(1);
+		}
 
 		BufferedImage image = ImageIO.read(new File(imageName));
 		int imageHeight = image.getHeight();
@@ -181,6 +203,27 @@ public class Main
 		// ----
 
 		ImageIO.write(displayImage, "png", new File(outputName));
+	}
+
+	/*-------------------------------------------------------------------------*/
+	private static void printUsage()
+	{
+		System.out.println("USAGE: java pacbyn.Main -i [input file] -o [output file] -n [pallette colours] -w [image size]");
+		System.out.println();
+		System.out.println("Required args:");
+		System.out.println(" -i : input image file (requires a square image)");
+		System.out.println(" -o : output image file");
+		System.out.println();
+		System.out.println("Optional args:");
+		System.out.println(" -n : number of colours in the pallette (default 20)");
+		System.out.println(" -w : output image size in pixels (default 40)");
+		System.out.println(" -k : pallette key gen method, one of INT_SEQ, INT_RAND, ALPHA_SEQ, ALPHA_RAND (default INT_SEQ)");
+		System.out.println(" -d : create a debug output image, with all cells coloured in");
+		System.out.println(" -? : print this help message");
+		System.out.println();
+		System.out.println("Example:");
+		System.out.println(" java pacbyn.Main -i input.png -o output.png -n 10 -w 55 -k ALPHA_SEQ");
+
 	}
 
 	/*-------------------------------------------------------------------------*/
