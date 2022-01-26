@@ -2,6 +2,8 @@
 Creates a **pa**lletised, pixelised **c**olour-**by**-**n**umbers for kids, 
 from an input image.
 
+I wrote this during the 2020 COVID-19 lockdowns to keep my kids occupied while I worked at home.
+
 ## boring stuff
 pacbyn is GPLv3 licensed.
 
